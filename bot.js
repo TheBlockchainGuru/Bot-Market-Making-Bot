@@ -1,0 +1,786 @@
+import ethers from "ethers";
+import chalk from "chalk";
+import fs from "fs";
+import mysql from "mysql";
+
+var config, constant, walletsABC;
+var totalVolume = 0;
+
+var ERC20_ABI = [
+  {
+    constant: false,
+    inputs: [
+      { name: "_spender", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ name: "success", type: "bool" }],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ name: "supply", type: "uint256" }],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_from", type: "address" },
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "transferFrom",
+    outputs: [{ name: "success", type: "bool" }],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "digits", type: "uint256" }],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ name: "success", type: "bool" }],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [
+      { name: "_owner", type: "address" },
+      { name: "_spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ name: "remaining", type: "uint256" }],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "_owner", type: "address" },
+      { indexed: true, name: "_spender", type: "address" },
+      { indexed: false, name: "_value", type: "uint256" },
+    ],
+    name: "Approval",
+    type: "event",
+  },
+];
+
+console.log(chalk.yellow(`Market Making bot is being started . . . \n`));
+
+console.log(chalk.green(`Loading Configuration . . . \n`));
+
+try {
+  config = JSON.parse(fs.readFileSync("./config.json", "utf8"));
+  constant = JSON.parse(fs.readFileSync("./constant.json", "utf8"));
+  walletsABC = JSON.parse(
+    fs.readFileSync("./config_ABCWallets.json", "utf8")
+  ).wallets;
+} catch (error) {
+  console.error(error);
+  exit();
+}
+
+console.log(config);
+
+console.log(chalk.green(`\nLoading Constant . . . \n`));
+
+console.log(constant);
+
+var provider = new ethers.providers.JsonRpcProvider(config.provider_ropsten);
+
+var con = mysql.createConnection({
+  host: config.host,
+  user: config.user,
+  password: config.password,
+  database: config.database,
+});
+
+function between(min, max) {
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+async function getNonce(addr) {
+  const nonce = await provider.getTransactionCount(addr);
+  return nonce;
+}
+
+async function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function waitTransaction(hash) {
+  let receipt = null;
+  while (receipt === null) {
+    try {
+      receipt = await provider.getTransactionReceipt(hash);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+}
+
+async function getBalance(addr) {
+  const balance = await provider.getBalance(addr);
+  return balance;
+}
+
+async function getTokenBalance(tokenAddress, address) {
+  const abi = [
+    {
+      name: "balanceOf",
+      type: "function",
+      inputs: [
+        {
+          name: "_owner",
+          type: "address",
+        },
+      ],
+      outputs: [
+        {
+          name: "balance",
+          type: "uint256",
+        },
+      ],
+      constant: true,
+      payable: false,
+    },
+  ];
+
+  const contract = new ethers.Contract(tokenAddress, abi, provider);
+  const balance = await contract.balanceOf(address);
+  return balance;
+}
+
+async function sendToken(
+  contract_address,
+  send_token_amount,
+  to_address,
+  send_account,
+  private_key
+) {
+  const send_abi = [
+    {
+      constant: false,
+      inputs: [
+        {
+          name: "_to",
+          type: "address",
+        },
+        {
+          name: "_value",
+          type: "uint256",
+        },
+      ],
+      name: "transfer",
+      outputs: [
+        {
+          name: "",
+          type: "bool",
+        },
+      ],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+  ];
+
+  let wallet = new ethers.Wallet(private_key);
+  let walletSigner = wallet.connect(provider);
+
+  if (contract_address) {
+    // general token send
+    let contract = new ethers.Contract(
+      contract_address,
+      send_abi,
+      walletSigner
+    );
+
+    // How many tokens?
+    let numberOfTokens = ethers.utils.parseUnits(send_token_amount, 18);
+    // Send tokens
+    const txTransfer = await contract
+      .transfer(to_address, numberOfTokens)
+      .catch((err) => {
+        console.error(
+          `${send_account} has not enough Balance for Token Transfer`
+        );
+        if (config.debug) console.error(error);
+      });
+    await waitTransaction(txTransfer.hash);
+  }
+}
+
+async function sendBNB(
+  send_token_amount,
+  to_address,
+  send_account,
+  private_key
+) {
+  try {
+    console.log(
+      `sending ${send_token_amount} BNB from ${send_account} to ${to_address}`
+    );
+    let wallet = new ethers.Wallet(private_key);
+    let walletSigner = wallet.connect(provider);
+    const tx = {
+      to: to_address,
+      value: ethers.utils.parseEther(send_token_amount),
+    };
+    const txTransfer = await walletSigner.sendTransaction(tx);
+    await waitTransaction(txTransfer.hash);
+  } catch (err) {
+    console.error(`${send_account} has not enough Balance for BNB Transfer`);
+    if (config.debug) console.error(err);
+  }
+}
+
+function getRandomArrayElements(arr, count) {
+  var shuffled = arr.slice(0),
+    i = arr.length,
+    min = i - count,
+    temp,
+    index;
+  while (i-- > min) {
+    index = Math.floor((i + 1) * Math.random());
+    temp = shuffled[index];
+    shuffled[index] = shuffled[i];
+    shuffled[i] = temp;
+  }
+  return shuffled.slice(min);
+}
+
+async function do_market_making(mode, accounts, volume, period) {
+  let CurVolume = 0;
+  let Running = true;
+  while (CurVolume <= volume && Running) {
+    await Promise.all(
+      accounts.map(async (item) => {
+        let wallet = new ethers.Wallet(item.private_key);
+        let account = wallet.connect(provider);
+        let router = new ethers.Contract(
+          config.router,
+          [
+            "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
+            "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+            "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+            "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+            "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external",
+            "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external",
+          ],
+          account
+        );
+
+        let tokenIn = config.wbnb;
+        let tokenOut = config.tokenAddress;
+
+        let balance = await getBalance(wallet.address);
+        if (
+          ethers.BigNumber.from(balance) <
+          constant.decimals * constant.minForTrade
+        ) {
+          console.log(
+            `${wallet.address} has not enough BNB (${
+              ethers.BigNumber.from(balance) / constant.decimals
+            })  for Trade...`
+          );
+          return;
+        }
+
+        let amountsIn =
+          (between(Math.floor(config.MinWallet), Math.floor(config.MaxWallet)) *
+            ethers.BigNumber.from(balance)) /
+          (100 * constant.decimals);
+
+        if (mode == "0") {
+          // Buy, here buy means for preparation.
+
+          let delay = between(0, 2000);
+          await sleep(delay);
+
+          const txBuy = await router
+            .swapExactETHForTokens(
+              0,
+              [tokenIn, tokenOut],
+              wallet.address,
+              Date.now() + 1000 * 60 * 10, //10 minutes
+              {
+                gasLimit: constant.gasLimit,
+                gasPrice: ethers.utils.parseUnits(
+                  `${constant.gasPrice}`,
+                  "gwei"
+                ),
+                value: ethers.utils.parseEther(amountsIn.toString()),
+              }
+            )
+            .catch((err) => {
+              console.error(
+                `${wallet.adress} has not enough Balance for transaction in Buy`
+              );
+              if (config.debug) console.error(err);
+              return;
+            });
+
+          await waitTransaction(txBuy.hash);
+
+          CurVolume += amountsIn;
+          totalVolume += amountsIn;
+
+          console.log("Total Volume : ", totalVolume);
+          console.log(
+            chalk.blue(
+              `${wallet.address} has swapped ${amountsIn}BNB -> ${
+                config.tokenName
+              } waited for ${delay / 1000}s`
+            )
+          );
+        } else if (mode == "1") {
+          // Sell
+
+          let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
+          let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
+
+          if (ethers.BigNumber.from(tokenBalance) > 100) {
+            let allowance = await tokenContract.allowance(
+              wallet.address,
+              config.router
+            );
+            if (allowance < ethers.constants.MaxUint256 / 100) {
+              const txApprove = await tokenContract
+                .approve(config.router, ethers.constants.MaxUint256, {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                })
+                .catch((err) => {
+                  console.error(
+                    `${wallet.adress} has not enough Balance for transaction in Approve`
+                  );
+                  if (config.debug) console.error(err);
+                  return;
+                });
+
+              await waitTransaction(txApprove.hash);
+              console.log(
+                `${wallet.address} has successfully approved ${config.tokenName}`
+              );
+            }
+
+            const txSell = await router
+              .swapExactTokensForETHSupportingFeeOnTransferTokens(
+                tokenBalance,
+                0,
+                [tokenOut, tokenIn],
+                wallet.address,
+                Date.now() + 1000 * 60 * 10, //10 minutes
+                {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                }
+              )
+              .catch((err) => {
+                console.error(
+                  `${wallet.address} has not enough Balance for transaction in Sell`
+                );
+                if (config.debug) console.error(err);
+                return;
+              });
+
+            await waitTransaction(txSell.hash);
+            console.log(
+              chalk.green(
+                `${wallet.address} has successfully swapped ${
+                  tokenBalance / constant.decimals
+                } ${config.tokenName}  to BNB`
+              )
+            );
+          }
+        } else if (mode == "2") {
+          // Buy & Sell
+          let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
+          let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
+          let isBuyOrSell = false; // if true, account can sell.
+          if (ethers.BigNumber.from(tokenBalance) > 100) {
+            isBuyOrSell = (between(0, 100) % 2 == 0 ? true : false);
+          }
+
+          if (isBuyOrSell) {
+            // Sell
+
+            let allowance = await tokenContract.allowance(
+              wallet.address,
+              config.router
+            );
+            if (allowance < ethers.constants.MaxUint256 / 100) {
+              const txApprove = await tokenContract
+                .approve(config.router, ethers.constants.MaxUint256, {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                })
+                .catch((err) => {
+                  console.error(
+                    `${wallet.adress} has not enough Balance for transaction in Approve`
+                  );
+                  if (config.debug) console.error(err);
+                  return;
+                });
+
+              await waitTransaction(txApprove.hash);
+              console.log(
+                `${wallet.address} has successfully approved ${config.tokenName}`
+              );
+            }
+
+            const txSell = await router
+              .swapExactTokensForETHSupportingFeeOnTransferTokens(
+                tokenBalance,
+                0,
+                [tokenOut, tokenIn],
+                wallet.address,
+                Date.now() + 1000 * 60 * 10, //10 minutes
+                {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                }
+              )
+              .catch((err) => {
+                console.error(
+                  `${wallet.address} has not enough Balance for transaction in Sell`
+                );
+                if (config.debug) console.error(err);
+                return;
+              });
+
+            await waitTransaction(txSell.hash);
+            console.log(
+              chalk.green(
+                `${wallet.address} has successfully swapped ${
+                  tokenBalance / constant.decimals
+                } ${config.tokenName}  to BNB`
+              )
+            );
+
+            CurVolume += amountsIn;
+            totalVolume += amountsIn;
+            console.log("Total Volume : ", totalVolume);
+
+          } else {
+            // Buy
+            let delay = between(0, 2000);
+            await sleep(delay);
+
+            const txBuy = await router
+              .swapExactETHForTokens(
+                0,
+                [tokenIn, tokenOut],
+                wallet.address,
+                Date.now() + 1000 * 60 * 10, //10 minutes
+                {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                  value: ethers.utils.parseEther(amountsIn.toString()),
+                }
+              )
+              .catch((err) => {
+                console.error(
+                  `${wallet.adress} has not enough Balance for transaction in Buy`
+                );
+                if (config.debug) console.error(err);
+                return;
+              });
+
+            await waitTransaction(txBuy.hash);
+
+            CurVolume += amountsIn;
+            totalVolume += amountsIn;
+
+            console.log("Total Volume : ", totalVolume);
+            console.log(
+              chalk.blue(
+                `${wallet.address} has swapped ${amountsIn}BNB -> ${
+                  config.tokenName
+                } waited for ${delay / 1000}s`
+              )
+            );
+          }
+        }
+      })
+    );
+
+    if (volume == 0) Running = false;
+  }
+}
+
+const run = async () => {
+  if (config.isCreate) {
+    //Create the Empty accounts...
+    let wallets = [];
+    for (let i = 0; i < config.numAccounts; i++) {
+      const wallet = ethers.Wallet.createRandom();
+      wallets.push([wallet.privateKey, wallet.address]);
+    }
+
+    console.log("Wallet creation is being started !");
+
+    let sql = "INSERT INTO accounts (private_key, public_key) VALUES ?";
+    let insertPromise = () => {
+      return new Promise((resolve, reject) => {
+        con.query(sql, [wallets], async function (err, result) {
+          if (err) return reject(err);
+          return resolve(result);
+        });
+      });
+    };
+    const result = await insertPromise();
+    console.log("Number of wallets inserted: " + result.affectedRows);
+  }
+
+  if (config.isSend) {
+    //Send funds from A,B,C to temp wallets...
+
+    let sql =
+      "SELECT * FROM accounts where 1=1 limit 0," + config.numTargetWallets;
+
+    let transferPromise = () => {
+      return new Promise((resolve, reject) => {
+        con.query(sql, async function (err, result) {
+          if (err) return reject(err);
+          return resolve(result);
+        });
+      });
+    };
+
+    const result = await transferPromise();
+
+    console.log(`\nStart Sending funds to ${result.length} wallets ...`);
+
+    let lenTargets = result.length;
+    let lenFrom = walletsABC.length;
+    let cycles = Math.floor(lenTargets / lenFrom) + 1;
+    let oneBatch = [];
+    for (let i = 0; i < cycles; i++) {
+      if (i == cycles - 1) oneBatch = result.slice(i * lenFrom, lenTargets);
+      else {
+        oneBatch = result.slice(i * lenFrom, (i + 1) * lenFrom);
+      }
+
+      await Promise.all(
+        oneBatch.map(async (item, index) => {
+          await sendBNB(
+            config.transAmounts,
+            item.public_key,
+            walletsABC[index].public_key,
+            walletsABC[index].private_key
+          );
+        })
+      );
+      console.log(`${i + 1} Sending cycle is finished`);
+    }
+
+    console.log(`\nTransfer is finished\n`);
+  }
+
+  if (config.isMaketMaking) {
+    /*
+     *    "Nwallets" : 10,    Numbers of wallets used by market making.
+     *    "Bnb_start" : 1,    Total BNB amounts in MM
+     *    "MinWallet" : 5,    Min percentage of each wallet for one trade
+     *    "MaxWallet" : 10,   Max percentage of each wallet for one trade
+     *    "Preparation" : 30, Percentage of bnb start for preparation (buy action)
+     *    "Volume_goal" : 2,  Total Volume
+     *    "time_goal" : 1     Period for volume goal
+     */
+
+    // Load possible accounts (positive Balance )from the DB
+
+    console.log(`\nStart Loading accounts from the DB for market making ...`);
+
+    let sql = "SELECT * FROM accounts where 1=1";
+    let loadPromise = () => {
+      return new Promise((resolve, reject) => {
+        con.query(sql, async function (err, result) {
+          if (err) return reject(err);
+          return resolve(result);
+        });
+      });
+    };
+    let possibleAccounts = [];
+    const result = await loadPromise();
+    await Promise.all(
+      result.map(async (item, index) => {
+        let balance = await getBalance(item.public_key);
+        if (
+          ethers.BigNumber.from(balance) >
+          constant.decimals * constant.minForTrade
+        ) {
+          possibleAccounts.push(item);
+        }
+      })
+    );
+
+    let accountsTrade = [];
+    if (possibleAccounts.length > config.Nwallets) {
+      accountsTrade = getRandomArrayElements(possibleAccounts).slice(0, config.Nwallets);
+    } else {
+      console.log(
+        `\nPossible acccounts are smaller than Nwallets(${config.Nwallets}). selecting all possible accounts(${possibleAccounts.length}) ... `
+      );
+      accountsTrade = possibleAccounts;
+    }
+
+    /*
+     *** Preparation ***
+     *** Buy the token till volume reaches to the preparation amounts.
+     */
+
+
+    const volumePrepare = (config.Volume_goal * config.Preparation) / 100;
+
+    console.log(
+      chalk.yellow(`Preparation (Volume : ${volumePrepare} BNB ) is being started !`)
+    );
+
+    await do_market_making(0, accountsTrade, volumePrepare, 0);
+    console.log(
+      chalk.yellow(`Preparation (Volume : ${volumePrepare} BNB ) is completed`)
+    );
+
+    // Random buy & Sell till Volume
+
+    console.log(
+      chalk.yellow(
+        `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is being started`
+      )
+    );
+
+    const volumeRemained = config.Volume_goal - volumePrepare;
+    await do_market_making(
+      2,
+      accountsTrade,
+      volumeRemained,
+      3600 * config.time_goal
+    );
+
+    console.log(
+      chalk.yellow(
+        `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is completed`
+      )
+    );
+  }
+
+  if (config.isTreasury) {
+    // Send all funds from all trading wallets to one treasury wallet.
+    console.log(
+      chalk.yellow(
+        "\nSend all funds from all trading wallets to one treasury wallet.\n"
+      )
+    );
+
+    // Sell tokens in all accounts
+
+    let sql = "SELECT * FROM accounts where 1=1";
+    let loadPromise = () => {
+      return new Promise((resolve, reject) => {
+        con.query(sql, async function (err, result) {
+          if (err) return reject(err);
+          return resolve(result);
+        });
+      });
+    };
+    let possibleAccounts = [];
+    const result = await loadPromise();
+    await Promise.all(
+      result.map(async (item, index) => {
+        let balance = await getBalance(item.public_key);
+        if (
+          ethers.BigNumber.from(balance) >
+          constant.decimals * constant.swapFee
+        ) {
+          possibleAccounts.push(item);
+        }
+      })
+    );
+
+    console.log(
+      chalk.red(
+        "\n Sell remained tokens in all accounts . . ."
+      )
+    );
+
+    await do_market_making(1, possibleAccounts, 0, 0);
+
+    console.log(
+      chalk.red(
+        "\n Sending remained funds from all accounts to the treasury wallet . . .\n"
+      )
+    );
+
+    await Promise.all(
+      possibleAccounts.map(async (item, index) => {
+        let balance = await getBalance(item.public_key);
+        let balanceDecimal = balance / constant.decimals;
+        let balWithoutFee = (
+          Math.floor((balanceDecimal - constant.trasferFee) * 1000000) / 1000000
+        ).toString();
+        await sendBNB(
+          balWithoutFee.toString(),
+          config.treasuryWallet,
+          item.public_key,
+          item.private_key
+        );
+      })
+    );
+
+    console.log(
+      chalk.red(
+        "\n Transfer is finished  . . .\n"
+      )
+    );
+
+  }
+};
+
+run();
