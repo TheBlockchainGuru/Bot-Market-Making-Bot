@@ -2,9 +2,22 @@ import ethers from "ethers";
 import chalk from "chalk";
 import fs from "fs";
 import mysql from "mysql";
+import { dir } from "console";
 
 var config, constant, walletsABC;
 var totalVolume = 0;
+
+// For Statistics
+var volume_buy = 0;
+var volume_sell = 0;
+
+var period_run = 0;
+var volume_perday = 0;
+
+var commission_paid = 0;
+
+var amnt_transactions = 0;
+var amnt_pertransactions = 0;
 
 var ERC20_ABI = [
   {
@@ -237,6 +250,7 @@ async function sendToken(
         if (config.debug) console.error(error);
       });
     await waitTransaction(txTransfer.hash);
+    amnt_transactions++;
   }
 }
 
@@ -258,6 +272,7 @@ async function sendBNB(
     };
     const txTransfer = await walletSigner.sendTransaction(tx);
     await waitTransaction(txTransfer.hash);
+    amnt_transactions++;
   } catch (err) {
     console.error(`${send_account} has not enough Balance for BNB Transfer`);
     if (config.debug) console.error(err);
@@ -309,7 +324,7 @@ async function do_market_making(mode, accounts, volume, period) {
           constant.decimals * constant.minForTrade
         ) {
           console.log(
-            `${wallet.address} has not enough BNB (${
+            `wallet${item.id} ${wallet.address} has not enough BNB (${
               ethers.BigNumber.from(balance) / constant.decimals
             })  for Trade...`
           );
@@ -344,7 +359,7 @@ async function do_market_making(mode, accounts, volume, period) {
             )
             .catch((err) => {
               console.error(
-                `${wallet.adress} has not enough Balance for transaction in Buy`
+                `wallet${item.id} ${wallet.adress} has not enough Balance for transaction in Buy`
               );
               if (config.debug) console.error(err);
               return;
@@ -354,13 +369,17 @@ async function do_market_making(mode, accounts, volume, period) {
 
           CurVolume += amountsIn;
           totalVolume += amountsIn;
+          volume_buy += amountsIn;
+          amnt_transactions++;
 
           console.log("Total Volume : ", totalVolume);
           console.log(
             chalk.blue(
-              `${wallet.address} has swapped ${amountsIn}BNB -> ${
-                config.tokenName
-              } waited for ${delay / 1000}s`
+              `wallet${item.id} ${
+                wallet.address
+              } has swapped ${amountsIn}BNB -> ${config.tokenName} waited for ${
+                delay / 1000
+              }s`
             )
           );
         } else if (mode == "1") {
@@ -370,6 +389,10 @@ async function do_market_making(mode, accounts, volume, period) {
           let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
 
           if (ethers.BigNumber.from(tokenBalance) > 100) {
+            // set delay for the timeout paramter.
+            let delay = between(0, period * 1000);
+            await sleep(delay);
+
             let allowance = await tokenContract.allowance(
               wallet.address,
               config.router
@@ -385,15 +408,16 @@ async function do_market_making(mode, accounts, volume, period) {
                 })
                 .catch((err) => {
                   console.error(
-                    `${wallet.adress} has not enough Balance for transaction in Approve`
+                    `wallet${item.id} ${wallet.adress} has not enough Balance for transaction in Approve`
                   );
                   if (config.debug) console.error(err);
                   return;
                 });
 
               await waitTransaction(txApprove.hash);
+              amnt_transactions++;
               console.log(
-                `${wallet.address} has successfully approved ${config.tokenName}`
+                `wallet${item.id} ${wallet.address} has successfully approved ${config.tokenName}`
               );
             }
 
@@ -414,20 +438,26 @@ async function do_market_making(mode, accounts, volume, period) {
               )
               .catch((err) => {
                 console.error(
-                  `${wallet.address} has not enough Balance for transaction in Sell`
+                  `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Sell`
                 );
                 if (config.debug) console.error(err);
                 return;
               });
 
             await waitTransaction(txSell.hash);
+
             console.log(
               chalk.green(
-                `${wallet.address} has successfully swapped ${
+                `wallet${item.id} ${wallet.address} has successfully swapped ${
                   tokenBalance / constant.decimals
                 } ${config.tokenName}  to BNB`
               )
             );
+
+            CurVolume += amountsIn;
+            totalVolume += amountsIn;
+            volume_sell += amountsIn;
+            amnt_transactions++;
           }
         } else if (mode == "2") {
           // Buy & Sell
@@ -435,7 +465,7 @@ async function do_market_making(mode, accounts, volume, period) {
           let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
           let isBuyOrSell = false; // if true, account can sell.
           if (ethers.BigNumber.from(tokenBalance) > 100) {
-            isBuyOrSell = (between(0, 100) % 2 == 0 ? true : false);
+            isBuyOrSell = between(0, 100) % 2 == 0 ? true : false;
           }
 
           if (isBuyOrSell) {
@@ -456,15 +486,16 @@ async function do_market_making(mode, accounts, volume, period) {
                 })
                 .catch((err) => {
                   console.error(
-                    `${wallet.adress} has not enough Balance for transaction in Approve`
+                    `wallet${item.id} ${wallet.adress} has not enough Balance for transaction in Approve`
                   );
                   if (config.debug) console.error(err);
                   return;
                 });
 
               await waitTransaction(txApprove.hash);
+              amnt_transactions++;
               console.log(
-                `${wallet.address} has successfully approved ${config.tokenName}`
+                `wallet${item.id} ${wallet.address} has successfully approved ${config.tokenName}`
               );
             }
 
@@ -485,7 +516,7 @@ async function do_market_making(mode, accounts, volume, period) {
               )
               .catch((err) => {
                 console.error(
-                  `${wallet.address} has not enough Balance for transaction in Sell`
+                  `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Sell`
                 );
                 if (config.debug) console.error(err);
                 return;
@@ -494,7 +525,7 @@ async function do_market_making(mode, accounts, volume, period) {
             await waitTransaction(txSell.hash);
             console.log(
               chalk.green(
-                `${wallet.address} has successfully swapped ${
+                `wallet${item.id} ${wallet.address} has successfully swapped ${
                   tokenBalance / constant.decimals
                 } ${config.tokenName}  to BNB`
               )
@@ -502,8 +533,10 @@ async function do_market_making(mode, accounts, volume, period) {
 
             CurVolume += amountsIn;
             totalVolume += amountsIn;
-            console.log("Total Volume : ", totalVolume);
+            volume_sell += amountsIn;
+            amnt_transactions++;
 
+            console.log("Total Volume : ", totalVolume);
           } else {
             // Buy
             let delay = between(0, 2000);
@@ -526,7 +559,7 @@ async function do_market_making(mode, accounts, volume, period) {
               )
               .catch((err) => {
                 console.error(
-                  `${wallet.adress} has not enough Balance for transaction in Buy`
+                  `wallet${item.id} ${wallet.adress} has not enough Balance for transaction in Buy`
                 );
                 if (config.debug) console.error(err);
                 return;
@@ -536,11 +569,15 @@ async function do_market_making(mode, accounts, volume, period) {
 
             CurVolume += amountsIn;
             totalVolume += amountsIn;
+            volume_buy += amountsIn;
+            amnt_transactions++;
 
             console.log("Total Volume : ", totalVolume);
             console.log(
               chalk.blue(
-                `${wallet.address} has swapped ${amountsIn}BNB -> ${
+                `wallet${item.id} ${
+                  wallet.address
+                } has swapped ${amountsIn}BNB -> ${
                   config.tokenName
                 } waited for ${delay / 1000}s`
               )
@@ -557,6 +594,7 @@ async function do_market_making(mode, accounts, volume, period) {
 const run = async () => {
   if (config.isCreate) {
     //Create the Empty accounts...
+
     let wallets = [];
     for (let i = 0; i < config.numAccounts; i++) {
       const wallet = ethers.Wallet.createRandom();
@@ -575,6 +613,7 @@ const run = async () => {
       });
     };
     const result = await insertPromise();
+
     console.log("Number of wallets inserted: " + result.affectedRows);
   }
 
@@ -609,8 +648,21 @@ const run = async () => {
 
       await Promise.all(
         oneBatch.map(async (item, index) => {
+          // calculate the transfer amount based on the amounts and noise.
+          let amnt;
+          let amntNoise =
+            (config.transAmounts * between(0, 100) * config.transfer_noise) /
+            10000;
+          let direction = between(1, 10) % 2 == 0 ? true : false;
+          if (direction) {
+            amnt = config.transAmounts + amntNoise;
+          } else {
+            amnt = config.transAmounts - amntNoise;
+          }
+
+          amnt = Math.floor(amnt * 100000) / 100000;
           await sendBNB(
-            config.transAmounts,
+            amnt.toString(),
             item.public_key,
             walletsABC[index].public_key,
             walletsABC[index].private_key
@@ -625,18 +677,22 @@ const run = async () => {
 
   if (config.isMaketMaking) {
     /*
-     *    "Nwallets" : 10,    Numbers of wallets used by market making.
-     *    "Bnb_start" : 1,    Total BNB amounts in MM
-     *    "MinWallet" : 5,    Min percentage of each wallet for one trade
-     *    "MaxWallet" : 10,   Max percentage of each wallet for one trade
+     *    "Nwallets"    : 10,    Numbers of wallets used by market making.
+     *    "Bnb_start"   : 1,    Total BNB amounts in MM
+     *    "MinWallet"   : 5,    Min percentage of each wallet for one trade
+     *    "MaxWallet"   : 10,   Max percentage of each wallet for one trade
      *    "Preparation" : 30, Percentage of bnb start for preparation (buy action)
      *    "Volume_goal" : 2,  Total Volume
-     *    "time_goal" : 1     Period for volume goal
+     *    "time_goal"   : 1     Period for volume goal
      */
 
     // Load possible accounts (positive Balance )from the DB
 
     console.log(`\nStart Loading accounts from the DB for market making ...`);
+
+    // in order to calculate the time for running.
+
+    var startTime = process.hrtime();
 
     let sql = "SELECT * FROM accounts where 1=1";
     let loadPromise = () => {
@@ -663,7 +719,10 @@ const run = async () => {
 
     let accountsTrade = [];
     if (possibleAccounts.length > config.Nwallets) {
-      accountsTrade = getRandomArrayElements(possibleAccounts).slice(0, config.Nwallets);
+      accountsTrade = getRandomArrayElements(possibleAccounts).slice(
+        0,
+        config.Nwallets
+      );
     } else {
       console.log(
         `\nPossible acccounts are smaller than Nwallets(${config.Nwallets}). selecting all possible accounts(${possibleAccounts.length}) ... `
@@ -676,11 +735,12 @@ const run = async () => {
      *** Buy the token till volume reaches to the preparation amounts.
      */
 
-
     const volumePrepare = (config.Volume_goal * config.Preparation) / 100;
 
     console.log(
-      chalk.yellow(`Preparation (Volume : ${volumePrepare} BNB ) is being started !`)
+      chalk.yellow(
+        `Preparation (Volume : ${volumePrepare} BNB ) is being started !`
+      )
     );
 
     await do_market_making(0, accountsTrade, volumePrepare, 0);
@@ -744,13 +804,41 @@ const run = async () => {
       })
     );
 
-    console.log(
-      chalk.red(
-        "\n Sell remained tokens in all accounts . . ."
-      )
-    );
+    if (config.sell_coin_before_resend) {
+      // Sell remained coins in all accounts.
+      console.log(chalk.red("\n Sell remained tokens in all accounts . . ."));
+      await do_market_making(1, possibleAccounts, 0, config.time_sellout);
+      console.log(chalk.red("\n Remained tokens are successfully sold  . . ."));
+    } else {
+      console.log(
+        chalk.red(
+          "\n Send  remained tokens from  all accounts to treasury one . . ."
+        )
+      );
 
-    await do_market_making(1, possibleAccounts, 0, 0);
+      await Promise.all(
+        possibleAccounts.map(async (item, index) => {
+          let balance = await getTokenBalance(
+            config.tokenAddress,
+            item.public_key
+          );
+          let balanceDecimal = balance / constant.decimals;
+          await sendToken(
+            config.tokenAddress,
+            balanceDecimal.toString(),
+            config.treasuryWallet,
+            item.public_key,
+            item.private_key
+          );
+        })
+      );
+
+      console.log(
+        chalk.red(
+          "\n Remained tokens are successfully sent to treasury one  . . ."
+        )
+      );
+    }
 
     console.log(
       chalk.red(
@@ -774,12 +862,27 @@ const run = async () => {
       })
     );
 
+    console.log(chalk.red("\n Transfer is finished  . . .\n"));
+  }
+
+  if (config.isStatistics) {
+    // For Statistics
+    period_run = process.hrtime(startTime)[1] / 1000000000;
+    commission_paid = (totalVolume * 0.3) / 100;
+    amnt_pertransactions = amnt_transactions / config.Nwallets;
+    volume_perday = (totalVolume * 3600 * 24) / period_run;
+
     console.log(
-      chalk.red(
-        "\n Transfer is finished  . . .\n"
+      chalk.green(
+        `Volume traded so far buy: ${volume_buy}, sell: ${volume_sell}`
       )
     );
-
+    console.log(chalk.green(`Volume per day : ${volume_perday}`));
+    console.log(chalk.green(`Commission paid : ${commission_paid}`));
+    console.log(chalk.green(`Number of transactions: ${amnt_transactions}`));
+    console.log(
+      chalk.green(`Transactions per wallet: ${amnt_pertransactions}`)
+    );
   }
 };
 
