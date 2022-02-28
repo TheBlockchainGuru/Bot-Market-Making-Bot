@@ -655,12 +655,13 @@ const run = async () => {
             10000;
           let direction = between(1, 10) % 2 == 0 ? true : false;
           if (direction) {
-            amnt = config.transAmounts + amntNoise;
+            amnt = parseFloat(config.transAmounts) + parseFloat(amntNoise);
           } else {
-            amnt = config.transAmounts - amntNoise;
+            amnt = parseFloat(config.transAmounts) - parseFloat(amntNoise);
           }
 
-          amnt = Math.floor(amnt * 100000) / 100000;
+          amnt = Math.floor(amnt * 1000) / 1000;
+
           await sendBNB(
             amnt.toString(),
             item.public_key,
