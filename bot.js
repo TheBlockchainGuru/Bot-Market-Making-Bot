@@ -129,7 +129,7 @@ console.log(chalk.green(`\nLoading Constant . . . \n`));
 
 console.log(constant);
 
-var provider = new ethers.providers.JsonRpcProvider(config.provider_ropsten);
+var provider = new ethers.providers.JsonRpcProvider(config.provider);
 
 var con = mysql.createConnection({
   host: config.host,

@@ -1,12 +1,17 @@
 {
+  "provider" : "https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
   "provider_bsc": "https://bsc-dataseed.binance.org",
   "provider_poly" : "https://polygon-rpc.com",
   "provider_ropsten" : "https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-  "wbnb": "0xc778417E063141139Fce010982780140Aa0cD5Ab",
+  
   "router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
   "ApeRouter" : "0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7",
+  "PancakeRouter" : "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+  
   "tokenName" : "Weenus",
   "tokenAddress" : "0x101848D5C5bBca18E6b4431eEdF6B95E9ADF82FA",
+  "wbnb": "0xc778417E063141139Fce010982780140Aa0cD5Ab",
+  
   "host" : "localhost",
   "user" : "root",
   "password" : "",
@@ -28,6 +33,14 @@
   "Preparation" : 10,
   "Volume_goal" : 0.5,
   "time_goal" : 1,
+
+  "is_change_price_floor" : true,
+  "buy_amount" : 10,
+  "sell_amount" : 10,
+  "buy_param" : 10,
+  "sell_param" : 10, 
+  "sell_tolerance" :5,
+  "buy_tolerance" :5,
   
   "isTreasury" : true,
   "treasuryWallet" : "0x337665B2e23f9eE9886159dbEC5B51251C5c4b4e",
