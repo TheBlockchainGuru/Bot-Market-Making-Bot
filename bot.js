@@ -335,6 +335,8 @@ async function do_market_making(mode, accounts, volume, period) {
           (between(Math.floor(config.MinWallet), Math.floor(config.MaxWallet)) *
             ethers.BigNumber.from(balance)) /
           (100 * constant.decimals);
+        
+        amountsIn = Math.floor(amountsIn * 10000)/10000;
 
         if (mode == "0") {
           // Buy, here buy means for preparation.
@@ -468,9 +470,13 @@ async function do_market_making(mode, accounts, volume, period) {
             isBuyOrSell = between(0, 100) % 2 == 0 ? true : false;
           }
 
+          // check if current BNB balance > amounts, if not, sell tokens first.
+          if (balance < constant.decimals * amountsIn) {
+            isBuyOrSell = true;
+          }
+
           if (isBuyOrSell) {
             // Sell
-
             let allowance = await tokenContract.allowance(
               wallet.address,
               config.router
