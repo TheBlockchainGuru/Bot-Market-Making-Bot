@@ -679,7 +679,6 @@ const run = async () => {
   if (config.isMaketMaking) {
     /*
      *    "Nwallets"    : 10,    Numbers of wallets used by market making.
-     *    "Bnb_start"   : 1,    Total BNB amounts in MM
      *    "MinWallet"   : 5,    Min percentage of each wallet for one trade
      *    "MaxWallet"   : 10,   Max percentage of each wallet for one trade
      *    "Preparation" : 30, Percentage of bnb start for preparation (buy action)

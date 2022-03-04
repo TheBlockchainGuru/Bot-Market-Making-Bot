@@ -4,6 +4,7 @@
   "provider_ropsten" : "https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
   "wbnb": "0xc778417E063141139Fce010982780140Aa0cD5Ab",
   "router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+  "ApeRouter" : "0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7",
   "tokenName" : "Weenus",
   "tokenAddress" : "0x101848D5C5bBca18E6b4431eEdF6B95E9ADF82FA",
   "host" : "localhost",
@@ -22,7 +23,6 @@
 
   "isMaketMaking" : true,
   "Nwallets" : 6,
-  "Bnb_start" : 1,
   "MinWallet" : 5, 
   "MaxWallet" : 10,
   "Preparation" : 10,
