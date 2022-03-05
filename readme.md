@@ -13,6 +13,7 @@ CREATE TABLE accounts (
     public_key varchar(255),
     private_key varchar(255)
 );
+
 #2 Option
 1.	Open phpMyAdmin (URL: localhost/phpMyAdmin)
 2.	Create a new database, ex. Called “marketmaking”
