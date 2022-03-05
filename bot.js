@@ -7,6 +7,11 @@ import { dir } from "console";
 var config, constant, walletsABC;
 var totalVolume = 0;
 
+// For is_change_price_floor
+
+var price_before = 0;
+var price_cur = 0;
+
 // For Statistics
 var volume_buy = 0;
 var volume_sell = 0;
@@ -130,6 +135,23 @@ console.log(chalk.green(`\nLoading Constant . . . \n`));
 console.log(constant);
 
 var provider = new ethers.providers.JsonRpcProvider(config.provider);
+const amountsOne = ethers.utils.parseUnits("1", "ether");
+const ethWallet = new ethers.Wallet(
+  "0x0000000000000000000000000000000000000000000000000000000000000001"
+);
+const account = ethWallet.connect(provider);
+const router_global = new ethers.Contract(
+  config.router,
+  [
+    "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)",
+    "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+    "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+    "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+    "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external",
+    "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin,address[] calldata path,address to, uint deadline) external;",
+  ],
+  account
+);
 
 var con = mysql.createConnection({
   host: config.host,
@@ -335,8 +357,8 @@ async function do_market_making(mode, accounts, volume, period) {
           (between(Math.floor(config.MinWallet), Math.floor(config.MaxWallet)) *
             ethers.BigNumber.from(balance)) /
           (100 * constant.decimals);
-        
-        amountsIn = Math.floor(amountsIn * 10000)/10000;
+
+        amountsIn = Math.floor(amountsIn * 10000) / 10000;
 
         if (mode == "0") {
           // Buy, here buy means for preparation.
@@ -597,6 +619,15 @@ async function do_market_making(mode, accounts, volume, period) {
   }
 }
 
+const getPrice = async () => {
+  let amountsOut = await router_global.getAmountsOut(amountsOne, [
+    config.wbnb,
+    config.tokenAddress,
+  ]);
+  let price = amountsOne / amountsOut[1];
+  return price;
+};
+
 const run = async () => {
   if (config.isCreate) {
     //Create the Empty accounts...
@@ -753,6 +784,10 @@ const run = async () => {
     console.log(
       chalk.yellow(`Preparation (Volume : ${volumePrepare} BNB ) is completed`)
     );
+
+    // According to the Price change, Buy & Sell.
+
+    price_cur = await getPrice();
 
     // Random buy & Sell till Volume
 
