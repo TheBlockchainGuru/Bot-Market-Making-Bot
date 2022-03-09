@@ -509,9 +509,6 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           let timeout_perCycle =
             period / (config.Volume_goal / (accounts.length * amnt_one));
 
-          console.log("amnt_one", amnt_one);
-          console.log("timout_percycle:", timeout_perCycle);
-
           let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
           let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
           let amntSell;
