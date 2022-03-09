@@ -36,7 +36,7 @@
   "MaxWallet" : 10,
   "Preparation" : 20,
   "Volume_goal" : 0.5,
-  "time_goal" : 1,
+  "time_goal" : 2,
 
   "is_change_price_floor" : false,
   "buy_amount" : 10,

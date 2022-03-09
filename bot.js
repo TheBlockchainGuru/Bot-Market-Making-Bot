@@ -485,6 +485,7 @@ async function do_market_making(mode, accounts, volume, period) {
           }
         } else if (mode == "2") {
           // Buy & Sell
+          let timeout_perCycle = period / (config.Volume_goal / (config.transAmounts  * accounts.length * 0.3));
           let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
           let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
           let amntSell;
@@ -495,11 +496,14 @@ async function do_market_making(mode, accounts, volume, period) {
               ((between(10, 20) / 20) * ethers.BigNumber.from(tokenBalance)) /
               constant.decimals;
           }
-
           // check if current BNB balance > amounts, if not, sell tokens first.
           if (balance < constant.decimals * amountsIn) {
             isBuyOrSell = true;
           }
+
+          let delay = between(0, Math.floor(timeout_perCycle * 1000));
+          await sleep(delay);
+
           if (isBuyOrSell) {
             // Calculate the exact volume based on the amntSell.
             let amountsArrBNB = await router_global.getAmountsOut(
@@ -575,9 +579,6 @@ async function do_market_making(mode, accounts, volume, period) {
             console.log("Total Volume : ", totalVolume);
           } else {
             // Buy
-            let delay = between(0, 2000);
-            await sleep(delay);
-
             console.log("amounts:" + amountsIn.toString());
             const txBuy = await router
               .swapExactETHForTokens(
@@ -729,7 +730,7 @@ const run = async () => {
      *    "MaxWallet"   : 10,   Max percentage of each wallet for one trade
      *    "Preparation" : 30, Percentage of bnb start for preparation (buy action)
      *    "Volume_goal" : 2,  Total Volume
-     *    "time_goal"   : 1     Period for volume goal
+     *    "time_goal"   : 1   Period for volume goal (seconds)
      */
 
     // Load possible accounts (positive Balance )from the DB
@@ -812,7 +813,7 @@ const run = async () => {
         2,
         accountsTrade,
         volumeRemained,
-        3600 * config.time_goal
+        config.time_goal
       );
     }
 
