@@ -22,7 +22,7 @@
   "database" : "marketmaking",
   "debug" : true,
 
-  "isCreate" : true,
+  "isCreate" : false,
   "numAccounts" : 10,
 
   "isSend" : true,
@@ -31,10 +31,15 @@
   "transfer_noise" : 10,
 
   "isMaketMaking" : true,
+  
   "Nwallets" : 3,
-  "MinWallet" : 5, 
-  "MaxWallet" : 10,
-  "Preparation" : 20,
+  
+  "noiseMin" : 5, 
+  "noiseMax" : 10,
+  
+  "Preparation" : 50,
+  "preparation_time" : 30,
+
   "Volume_goal" : 0.5,
   "time_goal" : 2,
 

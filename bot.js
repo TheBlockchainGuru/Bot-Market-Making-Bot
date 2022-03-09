@@ -316,7 +316,7 @@ function getRandomArrayElements(arr, count) {
   return shuffled.slice(min);
 }
 
-async function do_market_making(mode, accounts, volume, period) {
+async function do_market_making(mode, accounts, volume, period, isPreparation) {
   let CurVolume = 0;
   let Running = true;
   while (CurVolume <= volume && Running) {
@@ -354,9 +354,16 @@ async function do_market_making(mode, accounts, volume, period) {
         }
 
         let amountsIn =
-          (between(Math.floor(config.MinWallet), Math.floor(config.MaxWallet)) *
+          (between(Math.floor(config.noiseMin), Math.floor(config.noiseMax)) *
             ethers.BigNumber.from(balance)) /
           (100 * constant.decimals);
+
+        if (isPreparation) {
+          amountsIn =
+            ((ethers.BigNumber.from(balance) / constant.decimals) *
+              config.Preparation) /
+            100;
+        }
 
         amountsIn = Math.floor(amountsIn * 10000) / 10000;
 
@@ -485,7 +492,16 @@ async function do_market_making(mode, accounts, volume, period) {
           }
         } else if (mode == "2") {
           // Buy & Sell
-          let timeout_perCycle = period / (config.Volume_goal / (config.transAmounts  * accounts.length * 0.3));
+
+          let amnt_one =
+            (config.noiseMax + config.noiseMin)/200 * config.transAmounts;
+
+          let timeout_perCycle =
+            period / ((config.Volume_goal / accounts.length) * amnt_one);
+
+          console.log("amnt_one", amnt_one);
+          console.log("timout_percycle:", timeout_perCycle);
+
           let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
           let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
           let amntSell;
@@ -728,7 +744,7 @@ const run = async () => {
      *    "Nwallets"    : 10,    Numbers of wallets used by market making.
      *    "MinWallet"   : 5,    Min percentage of each wallet for one trade
      *    "MaxWallet"   : 10,   Max percentage of each wallet for one trade
-     *    "Preparation" : 30, Percentage of bnb start for preparation (buy action)
+     *    "Preparation" : 30,  Percentage of deposited BNB (buy action)
      *    "Volume_goal" : 2,  Total Volume
      *    "time_goal"   : 1   Period for volume goal (seconds)
      */
@@ -782,17 +798,16 @@ const run = async () => {
      *** Buy the token till volume reaches to the preparation amounts.
      */
 
-    const volumePrepare = (config.Volume_goal * config.Preparation) / 100;
-
     console.log(
       chalk.yellow(
-        `Preparation (Volume : ${volumePrepare} BNB ) is being started !`
+        `Preparation ( use ${config.Preparation} % of deposited funds to buy tokens, ) is being started !`
       )
     );
 
-    await do_market_making(0, accountsTrade, volumePrepare, 0);
+    await do_market_making(0, accountsTrade, 0, 0, true);
+
     console.log(
-      chalk.yellow(`Preparation (Volume : ${volumePrepare} BNB ) is completed`)
+      chalk.yellow(`Preparation (${config.Preparation} %) is completed`)
     );
 
     price_cur = await getPrice();
@@ -808,12 +823,12 @@ const run = async () => {
         )
       );
 
-      const volumeRemained = config.Volume_goal - volumePrepare;
       await do_market_making(
         2,
         accountsTrade,
-        volumeRemained,
-        config.time_goal
+        config.Volume_goal,
+        config.time_goal,
+        false
       );
     }
 
@@ -860,7 +875,13 @@ const run = async () => {
     if (config.sell_coin_before_resend) {
       // Sell remained coins in all accounts.
       console.log(chalk.red("\n Sell remained tokens in all accounts . . ."));
-      await do_market_making(1, possibleAccounts, 0, config.time_sellout);
+      await do_market_making(
+        1,
+        possibleAccounts,
+        0,
+        config.time_sellout,
+        false
+      );
       console.log(chalk.red("\n Remained tokens are successfully sold  . . ."));
     } else {
       console.log(
