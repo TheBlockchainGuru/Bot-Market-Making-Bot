@@ -383,7 +383,7 @@ async function do_market_making(mode, accounts, volume, period) {
             )
             .catch((err) => {
               console.error(
-                `wallet${item.id} ${wallet.adress} has not enough Balance for transaction in Buy`
+                `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Buy`
               );
               if (config.debug) console.error(err);
               return;
@@ -487,17 +487,27 @@ async function do_market_making(mode, accounts, volume, period) {
           // Buy & Sell
           let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
           let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
+          let amntSell;
           let isBuyOrSell = false; // if true, account can sell.
           if (ethers.BigNumber.from(tokenBalance) > 100) {
             isBuyOrSell = between(0, 100) % 2 == 0 ? true : false;
+            amntSell =
+              ((between(10, 20) / 20) * ethers.BigNumber.from(tokenBalance)) /
+              constant.decimals;
           }
 
           // check if current BNB balance > amounts, if not, sell tokens first.
           if (balance < constant.decimals * amountsIn) {
             isBuyOrSell = true;
           }
-
           if (isBuyOrSell) {
+            // Calculate the exact volume based on the amntSell.
+            let amountsArrBNB = await router_global.getAmountsOut(
+              ethers.utils.parseUnits(amntSell.toString(), "ether"),
+              [config.tokenAddress, config.wbnb]
+            );
+
+            let amountsBNB = amountsArrBNB[1] / constant.decimals;
             // Sell
             let allowance = await tokenContract.allowance(
               wallet.address,
@@ -529,7 +539,7 @@ async function do_market_making(mode, accounts, volume, period) {
 
             const txSell = await router
               .swapExactTokensForETHSupportingFeeOnTransferTokens(
-                tokenBalance,
+                ethers.utils.parseUnits(amntSell.toString(), "ether"),
                 0,
                 [tokenOut, tokenIn],
                 wallet.address,
@@ -553,15 +563,13 @@ async function do_market_making(mode, accounts, volume, period) {
             await waitTransaction(txSell.hash);
             console.log(
               chalk.green(
-                `wallet${item.id} ${wallet.address} has successfully swapped ${
-                  tokenBalance / constant.decimals
-                } ${config.tokenName}  to BNB`
+                `wallet${item.id} ${wallet.address} has successfully swapped ${amntSell} ${config.tokenName}  to BNB`
               )
             );
 
-            CurVolume += amountsIn;
-            totalVolume += amountsIn;
-            volume_sell += amountsIn;
+            CurVolume += amountsBNB;
+            totalVolume += amountsBNB;
+            volume_sell += amountsBNB;
             amnt_transactions++;
 
             console.log("Total Volume : ", totalVolume);
@@ -570,6 +578,7 @@ async function do_market_making(mode, accounts, volume, period) {
             let delay = between(0, 2000);
             await sleep(delay);
 
+            console.log("amounts:" + amountsIn.toString());
             const txBuy = await router
               .swapExactETHForTokens(
                 0,
@@ -785,25 +794,27 @@ const run = async () => {
       chalk.yellow(`Preparation (Volume : ${volumePrepare} BNB ) is completed`)
     );
 
-    // According to the Price change, Buy & Sell.
-
     price_cur = await getPrice();
 
-    // Random buy & Sell till Volume
+    if (config.is_change_price_floor) {
+      // According to the Price change, Buy & Sell.
+    } else {
+      // Random buy & Sell till Volume
 
-    console.log(
-      chalk.yellow(
-        `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is being started`
-      )
-    );
+      console.log(
+        chalk.yellow(
+          `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is being started`
+        )
+      );
 
-    const volumeRemained = config.Volume_goal - volumePrepare;
-    await do_market_making(
-      2,
-      accountsTrade,
-      volumeRemained,
-      3600 * config.time_goal
-    );
+      const volumeRemained = config.Volume_goal - volumePrepare;
+      await do_market_making(
+        2,
+        accountsTrade,
+        volumeRemained,
+        3600 * config.time_goal
+      );
+    }
 
     console.log(
       chalk.yellow(

@@ -22,23 +22,23 @@
   "database" : "marketmaking",
   "debug" : true,
 
-  "isCreate" : false,
+  "isCreate" : true,
   "numAccounts" : 10,
 
   "isSend" : true,
-  "numTargetWallets" :"6",
+  "numTargetWallets" :"3",
   "transAmounts" : "0.3",
   "transfer_noise" : 10,
 
   "isMaketMaking" : true,
-  "Nwallets" : 2,
+  "Nwallets" : 3,
   "MinWallet" : 5, 
   "MaxWallet" : 10,
   "Preparation" : 20,
-  "Volume_goal" : 0.3,
+  "Volume_goal" : 0.5,
   "time_goal" : 1,
 
-  "is_change_price_floor" : true,
+  "is_change_price_floor" : false,
   "buy_amount" : 10,
   "sell_amount" : 10,
   "buy_param" : 10,
