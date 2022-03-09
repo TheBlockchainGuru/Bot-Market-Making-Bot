@@ -371,6 +371,11 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           // Buy, here buy means for preparation.
 
           let delay = between(0, 2000);
+
+          if (isPreparation) {
+            delay = between(0, period * 1000);
+          }
+          
           await sleep(delay);
 
           const txBuy = await router
@@ -497,7 +502,7 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
             (config.noiseMax + config.noiseMin)/200 * config.transAmounts;
 
           let timeout_perCycle =
-            period / ((config.Volume_goal / accounts.length) * amnt_one);
+            period / (config.Volume_goal / (accounts.length * amnt_one));
 
           console.log("amnt_one", amnt_one);
           console.log("timout_percycle:", timeout_perCycle);
@@ -804,7 +809,7 @@ const run = async () => {
       )
     );
 
-    await do_market_making(0, accountsTrade, 0, 0, true);
+    await do_market_making(0, accountsTrade, 0, config.preparation_time, true);
 
     console.log(
       chalk.yellow(`Preparation (${config.Preparation} %) is completed`)
