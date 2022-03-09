@@ -2,10 +2,14 @@ import ethers from "ethers";
 import chalk from "chalk";
 import fs from "fs";
 import mysql from "mysql";
-import { dir } from "console";
+import http from "http";
+import express from "express";
 
 var config, constant, walletsABC;
 var totalVolume = 0;
+
+const app = express();
+const httpServer = http.createServer(app);
 
 // For is_change_price_floor
 
@@ -13,6 +17,7 @@ var price_before = 0;
 var price_cur = 0;
 
 // For Statistics
+var mStatistics;
 var volume_buy = 0;
 var volume_sell = 0;
 
@@ -375,7 +380,7 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           if (isPreparation) {
             delay = between(0, period * 1000);
           }
-          
+
           await sleep(delay);
 
           const txBuy = await router
@@ -966,3 +971,19 @@ const run = async () => {
 };
 
 run();
+
+app.get('/getAnalysis', function (req, res) {
+  res.status(201).json({
+    "period_run" : period_run,
+    "volume_buy" : volume_buy,
+    "volume_sell" : volume_sell,
+    "volume_perday": volume_perday,
+    "commission_paid" : commission_paid,
+    "amnt_transactions" : amnt_transactions,
+    "amnt_pertransactions" : amnt_pertransactions,
+  })
+});
+
+const PORT = 5000;
+httpServer.listen(PORT, (console.log(chalk.yellow(`Listening for Analysis...`))));
+
