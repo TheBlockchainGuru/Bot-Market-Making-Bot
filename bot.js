@@ -371,8 +371,8 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           let delay = between(0, 2000);
 
           if (isPreparation) {
-            let count = Math.floor(config.Preparation/ config.noiseMax);
-            delay = between(0, period * 1000/count);
+            let count = Math.floor(config.Preparation / config.noiseMax);
+            delay = between(0, (period * 1000) / count);
           }
 
           await sleep(delay);
@@ -806,7 +806,8 @@ const run = async () => {
         )
       );
 
-      let goal_preparation = config.transAmounts * config.Nwallets * config.Preparation/100;
+      let goal_preparation =
+        (config.transAmounts * config.Nwallets * config.Preparation) / 100;
 
       await do_market_making(
         0,
@@ -952,11 +953,7 @@ const run = async () => {
 
   if (config.isStatistics) {
     // For Statistics
-    period_run = process.hrtime(startTime)[1] / 1000000000;
-    commission_paid = (totalVolume * 0.3) / 100;
-    amnt_pertransactions = amnt_transactions / config.Nwallets;
-    volume_perday = (totalVolume * 3600 * 24) / period_run;
-
+    getAnalysis();
     console.log(
       chalk.green(
         `Volume traded so far buy: ${volume_buy}, sell: ${volume_sell}`
@@ -971,9 +968,18 @@ const run = async () => {
   }
 };
 
+const getAnalysis = () => {
+  period_run = process.hrtime(startTime)[1] / 1000000000;
+  commission_paid = (totalVolume * 0.3) / 100;
+  amnt_pertransactions = amnt_transactions / config.Nwallets;
+  volume_perday = (totalVolume * 3600 * 24) / period_run;
+};
+
 run();
 
 app.get("/getAnalysis", function (req, res) {
+  // For Statistics
+  getAnalysis();
   res.status(201).json({
     period_run: period_run,
     volume_buy: volume_buy,
