@@ -363,13 +363,6 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
             ethers.BigNumber.from(balance)) /
           (100 * constant.decimals);
 
-        if (isPreparation) {
-          amountsIn =
-            ((ethers.BigNumber.from(balance) / constant.decimals) *
-              config.Preparation) /
-            100;
-        }
-
         amountsIn = Math.floor(amountsIn * 10000) / 10000;
 
         if (mode == "0") {
@@ -378,7 +371,8 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           let delay = between(0, 2000);
 
           if (isPreparation) {
-            delay = between(0, period * 1000);
+            let count = Math.floor(config.Preparation/ config.noiseMax);
+            delay = between(0, period * 1000/count);
           }
 
           await sleep(delay);
@@ -812,10 +806,12 @@ const run = async () => {
         )
       );
 
+      let goal_preparation = config.transAmounts * config.Nwallets * config.Preparation/100;
+
       await do_market_making(
         0,
         accountsTrade,
-        0,
+        goal_preparation,
         config.preparation_time,
         true
       );
