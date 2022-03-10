@@ -37,6 +37,7 @@
   "noiseMin" : 5, 
   "noiseMax" : 10,
   
+  "isPreparation" : true,
   "Preparation" : 50,
   "preparation_time" : 30,
 

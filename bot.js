@@ -504,7 +504,7 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           // Buy & Sell
 
           let amnt_one =
-            (config.noiseMax + config.noiseMin)/200 * config.transAmounts;
+            ((config.noiseMax + config.noiseMin) / 200) * config.transAmounts;
 
           let timeout_perCycle =
             period / (config.Volume_goal / (accounts.length * amnt_one));
@@ -800,22 +800,30 @@ const run = async () => {
       accountsTrade = possibleAccounts;
     }
 
-    /*
-     *** Preparation ***
-     *** Buy the token till volume reaches to the preparation amounts.
-     */
+    if (config.isPreparation) {
+      /*
+       *** Preparation ***
+       *** Buy the token till volume reaches to the preparation amounts.
+       */
 
-    console.log(
-      chalk.yellow(
-        `Preparation ( use ${config.Preparation} % of deposited funds to buy tokens, ) is being started !`
-      )
-    );
+      console.log(
+        chalk.yellow(
+          `Preparation ( use ${config.Preparation} % of deposited funds to buy tokens, ) is being started !`
+        )
+      );
 
-    await do_market_making(0, accountsTrade, 0, config.preparation_time, true);
+      await do_market_making(
+        0,
+        accountsTrade,
+        0,
+        config.preparation_time,
+        true
+      );
 
-    console.log(
-      chalk.yellow(`Preparation (${config.Preparation} %) is completed`)
-    );
+      console.log(
+        chalk.yellow(`Preparation (${config.Preparation} %) is completed`)
+      );
+    }
 
     price_cur = await getPrice();
 
@@ -969,18 +977,17 @@ const run = async () => {
 
 run();
 
-app.get('/getAnalysis', function (req, res) {
+app.get("/getAnalysis", function (req, res) {
   res.status(201).json({
-    "period_run" : period_run,
-    "volume_buy" : volume_buy,
-    "volume_sell" : volume_sell,
-    "volume_perday": volume_perday,
-    "commission_paid" : commission_paid,
-    "amnt_transactions" : amnt_transactions,
-    "amnt_pertransactions" : amnt_pertransactions,
-  })
+    period_run: period_run,
+    volume_buy: volume_buy,
+    volume_sell: volume_sell,
+    volume_perday: volume_perday,
+    commission_paid: commission_paid,
+    amnt_transactions: amnt_transactions,
+    amnt_pertransactions: amnt_pertransactions,
+  });
 });
 
 const PORT = 5000;
-httpServer.listen(PORT, (console.log(chalk.yellow(`Listening for Analysis...`))));
-
+httpServer.listen(PORT, console.log(chalk.yellow(`Listening for Analysis...`)));
