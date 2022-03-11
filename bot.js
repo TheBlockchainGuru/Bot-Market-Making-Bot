@@ -20,6 +20,7 @@ var price_cur = 0;
 var mStatistics;
 var volume_buy = 0;
 var volume_sell = 0;
+var startTime;
 
 var period_run = 0;
 var volume_perday = 0;
@@ -153,7 +154,7 @@ const router_global = new ethers.Contract(
     "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
     "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
     "function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external",
-    "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin,address[] calldata path,address to, uint deadline) external;",
+    "function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin,address[] calldata path,address to, uint deadline) external",
   ],
   account
 );
@@ -192,6 +193,44 @@ async function waitTransaction(hash) {
 async function getBalance(addr) {
   const balance = await provider.getBalance(addr);
   return balance;
+}
+
+function getAndPrintCurrentTime() {
+  let date_ob = new Date();
+
+  // current date
+  // adjust 0 before single digit date
+  let date = ("0" + date_ob.getDate()).slice(-2);
+
+  // current month
+  let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
+
+  // current year
+  let year = date_ob.getFullYear();
+
+  // current hours
+  let hours = date_ob.getHours();
+
+  // current minutes
+  let minutes = date_ob.getMinutes();
+
+  // current seconds
+  let seconds = date_ob.getSeconds();
+
+  // prints date & time in YYYY-MM-DD HH:MM:SS format
+  console.log(
+    year +
+      "-" +
+      month +
+      "-" +
+      date +
+      " " +
+      hours +
+      ":" +
+      minutes +
+      ":" +
+      seconds
+  );
 }
 
 async function getTokenBalance(tokenAddress, address) {
@@ -372,7 +411,7 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
 
           if (isPreparation) {
             let count = Math.floor(config.Preparation / config.noiseMax);
-            delay = between(0, (period * 1000) / count);
+            delay = between(0, Math.floor((period * 1000) / count));
           }
 
           await sleep(delay);
@@ -408,6 +447,8 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           amnt_transactions++;
 
           console.log("Total Volume : ", totalVolume);
+
+          getAndPrintCurrentTime();
           console.log(
             chalk.blue(
               `wallet${item.id} ${
@@ -415,6 +456,20 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
               } has swapped ${amountsIn}BNB -> ${config.tokenName} waited for ${
                 delay / 1000
               }s`
+            )
+          );
+
+          // display time and balance of BNB, token.
+
+          let curBalance = await getBalance(wallet.address);
+          let curTokenBalance = await getTokenBalance(tokenOut, wallet.address);
+          console.log(
+            chalk.blue(
+              `wallet${item.id} ${wallet.address} BNB: ${
+                ethers.BigNumber.from(curBalance) / constant.decimals
+              }, ${config.tokenName} : ${
+                ethers.BigNumber.from(curTokenBalance) / constant.decimals
+              }`
             )
           );
         } else if (mode == "1") {
@@ -481,11 +536,28 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
 
             await waitTransaction(txSell.hash);
 
+            getAndPrintCurrentTime();
             console.log(
               chalk.green(
                 `wallet${item.id} ${wallet.address} has successfully swapped ${
                   tokenBalance / constant.decimals
                 } ${config.tokenName}  to BNB`
+              )
+            );
+
+            let curBalance = await getBalance(wallet.address);
+            let curTokenBalance = await getTokenBalance(
+              tokenOut,
+              wallet.address
+            );
+
+            console.log(
+              chalk.blue(
+                `wallet${item.id} ${wallet.address} BNB: ${
+                  ethers.BigNumber.from(curBalance) / constant.decimals
+                }, ${config.tokenName} : ${
+                  ethers.BigNumber.from(curTokenBalance) / constant.decimals
+                }`
               )
             );
 
@@ -582,9 +654,25 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
               });
 
             await waitTransaction(txSell.hash);
+            getAndPrintCurrentTime();
             console.log(
               chalk.green(
                 `wallet${item.id} ${wallet.address} has successfully swapped ${amntSell} ${config.tokenName}  to BNB`
+              )
+            );
+
+            let curBalance = await getBalance(wallet.address);
+            let curTokenBalance = await getTokenBalance(
+              tokenOut,
+              wallet.address
+            );
+            console.log(
+              chalk.blue(
+                `wallet${item.id} ${wallet.address} BNB: ${
+                  ethers.BigNumber.from(curBalance) / constant.decimals
+                }, ${config.tokenName} : ${
+                  ethers.BigNumber.from(curTokenBalance) / constant.decimals
+                }`
               )
             );
 
@@ -596,7 +684,7 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
             console.log("Total Volume : ", totalVolume);
           } else {
             // Buy
-            console.log("amounts:" + amountsIn.toString());
+
             const txBuy = await router
               .swapExactETHForTokens(
                 0,
@@ -622,6 +710,8 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
 
             await waitTransaction(txBuy.hash);
 
+            getAndPrintCurrentTime();
+
             CurVolume += amountsIn;
             totalVolume += amountsIn;
             volume_buy += amountsIn;
@@ -635,6 +725,21 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
                 } has swapped ${amountsIn}BNB -> ${
                   config.tokenName
                 } waited for ${delay / 1000}s`
+              )
+            );
+
+            let curBalance = await getBalance(wallet.address);
+            let curTokenBalance = await getTokenBalance(
+              tokenOut,
+              wallet.address
+            );
+            console.log(
+              chalk.blue(
+                `wallet${item.id} ${wallet.address} BNB: ${
+                  ethers.BigNumber.from(curBalance) / constant.decimals
+                }, ${config.tokenName} : ${
+                  ethers.BigNumber.from(curTokenBalance) / constant.decimals
+                }`
               )
             );
           }
@@ -656,7 +761,9 @@ const getPrice = async () => {
 };
 
 const run = async () => {
-  if (config.isCreate) {
+  startTime = process.hrtime();
+
+  if (config.isCreate && config.run_again) {
     //Create the Empty accounts...
 
     let wallets = [];
@@ -681,7 +788,7 @@ const run = async () => {
     console.log("Number of wallets inserted: " + result.affectedRows);
   }
 
-  if (config.isSend) {
+  if (config.isSend && config.run_again) {
     //Send funds from A,B,C to temp wallets...
 
     let sql =
@@ -756,8 +863,6 @@ const run = async () => {
 
     // in order to calculate the time for running.
 
-    var startTime = process.hrtime();
-
     let sql = "SELECT * FROM accounts where 1=1";
     let loadPromise = () => {
       return new Promise((resolve, reject) => {
@@ -794,7 +899,7 @@ const run = async () => {
       accountsTrade = possibleAccounts;
     }
 
-    if (config.isPreparation) {
+    if (config.isPreparation && config.run_again) {
       /*
        *** Preparation ***
        *** Buy the token till volume reaches to the preparation amounts.
@@ -852,6 +957,28 @@ const run = async () => {
   }
 
   if (config.isTreasury) {
+    await sendAllFunds();
+  }
+
+  if (config.isStatistics) {
+    // For Statistics
+    getAnalysis();
+    console.log(
+      chalk.green(
+        `Volume traded so far buy: ${volume_buy}, sell: ${volume_sell}`
+      )
+    );
+    console.log(chalk.green(`Volume per day : ${volume_perday}`));
+    console.log(chalk.green(`Commission paid : ${commission_paid}`));
+    console.log(chalk.green(`Number of transactions: ${amnt_transactions}`));
+    console.log(
+      chalk.green(`Transactions per wallet: ${amnt_pertransactions}`)
+    );
+  }
+};
+
+const sendAllFunds = async() => {
+
     // Send all funds from all trading wallets to one treasury wallet.
     console.log(
       chalk.yellow(
@@ -949,24 +1076,7 @@ const run = async () => {
     );
 
     console.log(chalk.red("\n Transfer is finished  . . .\n"));
-  }
-
-  if (config.isStatistics) {
-    // For Statistics
-    getAnalysis();
-    console.log(
-      chalk.green(
-        `Volume traded so far buy: ${volume_buy}, sell: ${volume_sell}`
-      )
-    );
-    console.log(chalk.green(`Volume per day : ${volume_perday}`));
-    console.log(chalk.green(`Commission paid : ${commission_paid}`));
-    console.log(chalk.green(`Number of transactions: ${amnt_transactions}`));
-    console.log(
-      chalk.green(`Transactions per wallet: ${amnt_pertransactions}`)
-    );
-  }
-};
+}
 
 const getAnalysis = () => {
   period_run = process.hrtime(startTime)[1] / 1000000000;
@@ -990,6 +1100,15 @@ app.get("/getAnalysis", function (req, res) {
     amnt_pertransactions: amnt_pertransactions,
   });
 });
+
+
+app.get("/sendAllFunds", async function (req, res) {
+  await sendAllFunds();
+  res.status(201).json({
+    msg: "success",
+  });
+});
+
 
 const PORT = 5000;
 httpServer.listen(PORT, console.log(chalk.yellow(`Listening for Analysis...`)));

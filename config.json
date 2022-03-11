@@ -1,8 +1,9 @@
 {
-  "provider" : "https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+  "provider" : "https://kovan.infura.io/v3/8827667c483640e699955a604e6280e4",
   "provider_bsc": "https://bsc-dataseed.binance.org",
   "provider_poly" : "https://polygon-rpc.com",
-  "provider_ropsten" : "https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+  "provider_ropsten" : "https://ropsten.infura.io/v3/8827667c483640e699955a604e6280e4",
+  "provider_kovan" : "https://kovan.infura.io/v3/8827667c483640e699955a604e6280e4",
   
   "router": "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
   "ApeRouter" : "0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7",
@@ -10,9 +11,9 @@
   "PancakeRouter" : "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   
   "tokenName" : "Weenus",
-  "tokenAddress" : "0x101848D5C5bBca18E6b4431eEdF6B95E9ADF82FA",
+  "tokenAddress" : "0xaFF4481D10270F50f203E0763e2597776068CBc5",
 
-  "wbnb" : "0xc778417E063141139Fce010982780140Aa0cD5Ab",
+  "wbnb" : "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
   "wbnb_ropsten": "0xc778417E063141139Fce010982780140Aa0cD5Ab",
   "wbnb_bsc": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
   
@@ -20,7 +21,9 @@
   "user" : "root",
   "password" : "",
   "database" : "marketmaking",
+
   "debug" : true,
+  "run_again" : true,
 
   "isCreate" : false,
   "numAccounts" : 10,
@@ -38,10 +41,10 @@
   "noiseMax" : 10,
   
   "isPreparation" : true,
-  "Preparation" : 50,
-  "preparation_time" : 30,
+  "Preparation" : 20,
+  "preparation_time" : 2,
 
-  "Volume_goal" : 0.5,
+  "Volume_goal" : 0.3,
   "time_goal" : 2,
 
   "is_change_price_floor" : false,
