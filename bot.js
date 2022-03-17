@@ -582,7 +582,7 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           if (ethers.BigNumber.from(tokenBalance) > 100) {
             isBuyOrSell = between(0, 100) % 2 == 0 ? true : false;
             amntSell =
-              ((between(10, 20) / 20) * ethers.BigNumber.from(tokenBalance)) /
+              ((between(config.noiseMin, config.noiseMax) / 100) * ethers.BigNumber.from(tokenBalance)) /
               constant.decimals;
           }
           // check if current BNB balance > amounts, if not, sell tokens first.
@@ -761,7 +761,7 @@ const getPrice = async () => {
 };
 
 const run = async () => {
-  startTime = process.hrtime();
+  startTime = new Date();
 
   if (config.isCreate && config.run_again) {
     //Create the Empty accounts...
@@ -1079,7 +1079,8 @@ const sendAllFunds = async() => {
 }
 
 const getAnalysis = () => {
-  period_run = process.hrtime(startTime)[1] / 1000000000;
+  let stop = new Date();
+  period_run = (stop-startTime)/1000;
   commission_paid = (totalVolume * 0.3) / 100;
   amnt_pertransactions = amnt_transactions / config.Nwallets;
   volume_perday = (totalVolume * 3600 * 24) / period_run;
@@ -1101,14 +1102,12 @@ app.get("/getAnalysis", function (req, res) {
   });
 });
 
-
 app.get("/sendAllFunds", async function (req, res) {
   await sendAllFunds();
   res.status(201).json({
     msg: "success",
   });
 });
-
 
 const PORT = 5000;
 httpServer.listen(PORT, console.log(chalk.yellow(`Listening for Analysis...`)));

@@ -22,7 +22,7 @@
   "password" : "",
   "database" : "marketmaking",
 
-  "debug" : true,
+  "debug" : false,
   "run_again" : true,
 
   "isCreate" : false,
