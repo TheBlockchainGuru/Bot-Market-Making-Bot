@@ -566,6 +566,175 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
             volume_sell += amountsIn;
             amnt_transactions++;
           }
+        } else if (mode == "3") {
+          // Sell the tokens based on the price change.
+
+          let tokenContract = new ethers.Contract(tokenOut, ERC20_ABI, account);
+          let tokenBalance = await getTokenBalance(tokenOut, wallet.address);
+
+          if (ethers.BigNumber.from(tokenBalance) > 100) {
+            // set delay for the timeout paramter.
+            let delay = between(0, period * 1000);
+            await sleep(delay);
+
+            let allowance = await tokenContract.allowance(
+              wallet.address,
+              config.router
+            );
+            if (allowance < ethers.constants.MaxUint256 / 100) {
+              const txApprove = await tokenContract
+                .approve(config.router, ethers.constants.MaxUint256, {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                })
+                .catch((err) => {
+                  console.error(
+                    `wallet${item.id} ${wallet.adress} has not enough Balance for transaction in Approve`
+                  );
+                  if (config.debug) console.error(err);
+                  return;
+                });
+
+              await waitTransaction(txApprove.hash);
+              amnt_transactions++;
+              console.log(
+                `wallet${item.id} ${wallet.address} has successfully approved ${config.tokenName}`
+              );
+            }
+
+            let amntSell =
+              ((config.sell_amount / 100) *
+                ethers.BigNumber.from(tokenBalance)) /
+              constant.decimals;
+
+            const txSell = await router
+              .swapExactTokensForETHSupportingFeeOnTransferTokens(
+                ethers.utils.parseUnits(amntSell.toString(), "ether"),
+                0,
+                [tokenOut, tokenIn],
+                wallet.address,
+                Date.now() + 1000 * 60 * 10, //10 minutes
+                {
+                  gasLimit: constant.gasLimit,
+                  gasPrice: ethers.utils.parseUnits(
+                    `${constant.gasPrice}`,
+                    "gwei"
+                  ),
+                }
+              )
+              .catch((err) => {
+                console.error(
+                  `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Sell`
+                );
+                if (config.debug) console.error(err);
+                return;
+              });
+
+            await waitTransaction(txSell.hash);
+
+            getAndPrintCurrentTime();
+            console.log(
+              chalk.green(
+                `wallet${item.id} ${wallet.address} has successfully swapped ${
+                  tokenBalance / constant.decimals
+                } ${config.tokenName}  to BNB`
+              )
+            );
+
+            let curBalance = await getBalance(wallet.address);
+            let curTokenBalance = await getTokenBalance(
+              tokenOut,
+              wallet.address
+            );
+
+            console.log(
+              chalk.blue(
+                `wallet${item.id} ${wallet.address} BNB: ${
+                  ethers.BigNumber.from(curBalance) / constant.decimals
+                }, ${config.tokenName} : ${
+                  ethers.BigNumber.from(curTokenBalance) / constant.decimals
+                }`
+              )
+            );
+
+            CurVolume += amountsIn;
+            totalVolume += amountsIn;
+            volume_sell += amountsIn;
+            amnt_transactions++;
+          }
+        } else if (mode == "4") {
+             // Buy based on the change price
+
+             let delay = between(0, period * 1000);
+   
+             await sleep(delay);
+
+             amountsIn =
+             (config.buy_amount *
+               ethers.BigNumber.from(balance)) /
+             (100 * constant.decimals);
+   
+             amountsIn = Math.floor(amountsIn * 10000) / 10000;
+   
+             const txBuy = await router
+               .swapExactETHForTokens(
+                 0,
+                 [tokenIn, tokenOut],
+                 wallet.address,
+                 Date.now() + 1000 * 60 * 10, //10 minutes
+                 {
+                   gasLimit: constant.gasLimit,
+                   gasPrice: ethers.utils.parseUnits(
+                     `${constant.gasPrice}`,
+                     "gwei"
+                   ),
+                   value: ethers.utils.parseEther(amountsIn.toString()),
+                 }
+               )
+               .catch((err) => {
+                 console.error(
+                   `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Buy`
+                 );
+                 if (config.debug) console.error(err);
+                 return;
+               });
+   
+             await waitTransaction(txBuy.hash);
+   
+             CurVolume += amountsIn;
+             totalVolume += amountsIn;
+             volume_buy += amountsIn;
+             amnt_transactions++;
+   
+             console.log("Total Volume : ", totalVolume);
+   
+             getAndPrintCurrentTime();
+             console.log(
+               chalk.blue(
+                 `wallet${item.id} ${
+                   wallet.address
+                 } has swapped ${amountsIn}BNB -> ${config.tokenName} waited for ${
+                   delay / 1000
+                 }s`
+               )
+             );
+   
+             // display time and balance of BNB, token.
+   
+             let curBalance = await getBalance(wallet.address);
+             let curTokenBalance = await getTokenBalance(tokenOut, wallet.address);
+             console.log(
+               chalk.blue(
+                 `wallet${item.id} ${wallet.address} BNB: ${
+                   ethers.BigNumber.from(curBalance) / constant.decimals
+                 }, ${config.tokenName} : ${
+                   ethers.BigNumber.from(curTokenBalance) / constant.decimals
+                 }`
+               )
+             );
         } else if (mode == "2") {
           // Buy & Sell
 
@@ -582,7 +751,8 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
           if (ethers.BigNumber.from(tokenBalance) > 100) {
             isBuyOrSell = between(0, 100) % 2 == 0 ? true : false;
             amntSell =
-              ((between(config.noiseMin, config.noiseMax) / 100) * ethers.BigNumber.from(tokenBalance)) /
+              ((between(config.noiseMin, config.noiseMax) / 100) *
+                ethers.BigNumber.from(tokenBalance)) /
               constant.decimals;
           }
           // check if current BNB balance > amounts, if not, sell tokens first.
@@ -928,9 +1098,36 @@ const run = async () => {
     }
 
     price_cur = await getPrice();
+    price_before = price_cur;
 
     if (config.is_change_price_floor) {
       // According to the Price change, Buy & Sell.
+
+      while (true) {
+        price_cur = await getPrice();
+        let priceHigh = price_before * (1 + config.buy_param / 100);
+        let priceLow = price_before * (1 - config.buy_param / 100);
+        if (price_cur > priceHigh) {
+          await do_market_making(
+            3,
+            possibleAccounts,
+            0,
+            config.time_sellout,
+            false
+          );
+          price_before = await getPrice();
+        } else if (price_cur < priceLow) {
+          await do_market_making(
+            4,
+            possibleAccounts,
+            0,
+            config.time_sellout,
+            false
+          );
+          price_before = await getPrice();
+        }
+        await sleep(5000);
+      }
     } else {
       // Random buy & Sell till Volume
 
@@ -977,97 +1174,61 @@ const run = async () => {
   }
 };
 
-const sendAllFunds = async() => {
+const sendAllFunds = async () => {
+  // Send all funds from all trading wallets to one treasury wallet.
+  console.log(
+    chalk.yellow(
+      "\nSend all funds from all trading wallets to one treasury wallet.\n"
+    )
+  );
 
-    // Send all funds from all trading wallets to one treasury wallet.
-    console.log(
-      chalk.yellow(
-        "\nSend all funds from all trading wallets to one treasury wallet.\n"
-      )
-    );
+  // Sell tokens in all accounts
 
-    // Sell tokens in all accounts
-
-    let sql = "SELECT * FROM accounts where 1=1";
-    let loadPromise = () => {
-      return new Promise((resolve, reject) => {
-        con.query(sql, async function (err, result) {
-          if (err) return reject(err);
-          return resolve(result);
-        });
+  let sql = "SELECT * FROM accounts where 1=1";
+  let loadPromise = () => {
+    return new Promise((resolve, reject) => {
+      con.query(sql, async function (err, result) {
+        if (err) return reject(err);
+        return resolve(result);
       });
-    };
-    let possibleAccounts = [];
-    const result = await loadPromise();
-    await Promise.all(
-      result.map(async (item, index) => {
-        let balance = await getBalance(item.public_key);
-        if (
-          ethers.BigNumber.from(balance) >
-          constant.decimals * constant.swapFee
-        ) {
-          possibleAccounts.push(item);
-        }
-      })
-    );
+    });
+  };
+  let possibleAccounts = [];
+  const result = await loadPromise();
+  await Promise.all(
+    result.map(async (item, index) => {
+      let balance = await getBalance(item.public_key);
+      if (
+        ethers.BigNumber.from(balance) >
+        constant.decimals * constant.swapFee
+      ) {
+        possibleAccounts.push(item);
+      }
+    })
+  );
 
-    if (config.sell_coin_before_resend) {
-      // Sell remained coins in all accounts.
-      console.log(chalk.red("\n Sell remained tokens in all accounts . . ."));
-      await do_market_making(
-        1,
-        possibleAccounts,
-        0,
-        config.time_sellout,
-        false
-      );
-      console.log(chalk.red("\n Remained tokens are successfully sold  . . ."));
-    } else {
-      console.log(
-        chalk.red(
-          "\n Send  remained tokens from  all accounts to treasury one . . ."
-        )
-      );
-
-      await Promise.all(
-        possibleAccounts.map(async (item, index) => {
-          let balance = await getTokenBalance(
-            config.tokenAddress,
-            item.public_key
-          );
-          let balanceDecimal = balance / constant.decimals;
-          await sendToken(
-            config.tokenAddress,
-            balanceDecimal.toString(),
-            config.treasuryWallet,
-            item.public_key,
-            item.private_key
-          );
-        })
-      );
-
-      console.log(
-        chalk.red(
-          "\n Remained tokens are successfully sent to treasury one  . . ."
-        )
-      );
-    }
-
+  if (config.sell_coin_before_resend) {
+    // Sell remained coins in all accounts.
+    console.log(chalk.red("\n Sell remained tokens in all accounts . . ."));
+    await do_market_making(1, possibleAccounts, 0, config.time_sellout, false);
+    console.log(chalk.red("\n Remained tokens are successfully sold  . . ."));
+  } else {
     console.log(
       chalk.red(
-        "\n Sending remained funds from all accounts to the treasury wallet . . .\n"
+        "\n Send  remained tokens from  all accounts to treasury one . . ."
       )
     );
 
     await Promise.all(
       possibleAccounts.map(async (item, index) => {
-        let balance = await getBalance(item.public_key);
+        let balance = await getTokenBalance(
+          config.tokenAddress,
+          item.public_key
+        );
         let balanceDecimal = balance / constant.decimals;
-        let balWithoutFee = (
-          Math.floor((balanceDecimal - constant.trasferFee) * 1000000) / 1000000
-        ).toString();
-        await sendBNB(
-          balWithoutFee.toString(),
+        await sendToken(
+          config.tokenAddress,
+          balanceDecimal.toString(),
           config.treasuryWallet,
           item.public_key,
           item.private_key
@@ -1075,12 +1236,41 @@ const sendAllFunds = async() => {
       })
     );
 
-    console.log(chalk.red("\n Transfer is finished  . . .\n"));
-}
+    console.log(
+      chalk.red(
+        "\n Remained tokens are successfully sent to treasury one  . . ."
+      )
+    );
+  }
+
+  console.log(
+    chalk.red(
+      "\n Sending remained funds from all accounts to the treasury wallet . . .\n"
+    )
+  );
+
+  await Promise.all(
+    possibleAccounts.map(async (item, index) => {
+      let balance = await getBalance(item.public_key);
+      let balanceDecimal = balance / constant.decimals;
+      let balWithoutFee = (
+        Math.floor((balanceDecimal - constant.trasferFee) * 1000000) / 1000000
+      ).toString();
+      await sendBNB(
+        balWithoutFee.toString(),
+        config.treasuryWallet,
+        item.public_key,
+        item.private_key
+      );
+    })
+  );
+
+  console.log(chalk.red("\n Transfer is finished  . . .\n"));
+};
 
 const getAnalysis = () => {
   let stop = new Date();
-  period_run = (stop-startTime)/1000;
+  period_run = (stop - startTime) / 1000;
   commission_paid = (totalVolume * 0.3) / 100;
   amnt_pertransactions = amnt_transactions / config.Nwallets;
   volume_perday = (totalVolume * 3600 * 24) / period_run;
