@@ -52,8 +52,7 @@
   "sell_amount" : 10,
   "buy_param" : 10,
   "sell_param" : 10, 
-  "sell_tolerance" :5,
-  "buy_tolerance" :5,
+  "change_time_goal" :2,
   
   "isTreasury" : true,
   "treasuryWallet" : "0x337665B2e23f9eE9886159dbEC5B51251C5c4b4e",

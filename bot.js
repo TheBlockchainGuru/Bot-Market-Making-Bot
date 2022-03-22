@@ -666,75 +666,74 @@ async function do_market_making(mode, accounts, volume, period, isPreparation) {
             amnt_transactions++;
           }
         } else if (mode == "4") {
-             // Buy based on the change price
+          // Buy based on the change price
 
-             let delay = between(0, period * 1000);
-   
-             await sleep(delay);
+          let delay = between(0, period * 1000);
 
-             amountsIn =
-             (config.buy_amount *
-               ethers.BigNumber.from(balance)) /
-             (100 * constant.decimals);
-   
-             amountsIn = Math.floor(amountsIn * 10000) / 10000;
-   
-             const txBuy = await router
-               .swapExactETHForTokens(
-                 0,
-                 [tokenIn, tokenOut],
-                 wallet.address,
-                 Date.now() + 1000 * 60 * 10, //10 minutes
-                 {
-                   gasLimit: constant.gasLimit,
-                   gasPrice: ethers.utils.parseUnits(
-                     `${constant.gasPrice}`,
-                     "gwei"
-                   ),
-                   value: ethers.utils.parseEther(amountsIn.toString()),
-                 }
-               )
-               .catch((err) => {
-                 console.error(
-                   `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Buy`
-                 );
-                 if (config.debug) console.error(err);
-                 return;
-               });
-   
-             await waitTransaction(txBuy.hash);
-   
-             CurVolume += amountsIn;
-             totalVolume += amountsIn;
-             volume_buy += amountsIn;
-             amnt_transactions++;
-   
-             console.log("Total Volume : ", totalVolume);
-   
-             getAndPrintCurrentTime();
-             console.log(
-               chalk.blue(
-                 `wallet${item.id} ${
-                   wallet.address
-                 } has swapped ${amountsIn}BNB -> ${config.tokenName} waited for ${
-                   delay / 1000
-                 }s`
-               )
-             );
-   
-             // display time and balance of BNB, token.
-   
-             let curBalance = await getBalance(wallet.address);
-             let curTokenBalance = await getTokenBalance(tokenOut, wallet.address);
-             console.log(
-               chalk.blue(
-                 `wallet${item.id} ${wallet.address} BNB: ${
-                   ethers.BigNumber.from(curBalance) / constant.decimals
-                 }, ${config.tokenName} : ${
-                   ethers.BigNumber.from(curTokenBalance) / constant.decimals
-                 }`
-               )
-             );
+          await sleep(delay);
+
+          amountsIn =
+            (config.buy_amount * ethers.BigNumber.from(balance)) /
+            (100 * constant.decimals);
+
+          amountsIn = Math.floor(amountsIn * 10000) / 10000;
+
+          const txBuy = await router
+            .swapExactETHForTokens(
+              0,
+              [tokenIn, tokenOut],
+              wallet.address,
+              Date.now() + 1000 * 60 * 10, //10 minutes
+              {
+                gasLimit: constant.gasLimit,
+                gasPrice: ethers.utils.parseUnits(
+                  `${constant.gasPrice}`,
+                  "gwei"
+                ),
+                value: ethers.utils.parseEther(amountsIn.toString()),
+              }
+            )
+            .catch((err) => {
+              console.error(
+                `wallet${item.id} ${wallet.address} has not enough Balance for transaction in Buy`
+              );
+              if (config.debug) console.error(err);
+              return;
+            });
+
+          await waitTransaction(txBuy.hash);
+
+          CurVolume += amountsIn;
+          totalVolume += amountsIn;
+          volume_buy += amountsIn;
+          amnt_transactions++;
+
+          console.log("Total Volume : ", totalVolume);
+
+          getAndPrintCurrentTime();
+          console.log(
+            chalk.blue(
+              `wallet${item.id} ${
+                wallet.address
+              } has swapped ${amountsIn}BNB -> ${config.tokenName} waited for ${
+                delay / 1000
+              }s`
+            )
+          );
+
+          // display time and balance of BNB, token.
+
+          let curBalance = await getBalance(wallet.address);
+          let curTokenBalance = await getTokenBalance(tokenOut, wallet.address);
+          console.log(
+            chalk.blue(
+              `wallet${item.id} ${wallet.address} BNB: ${
+                ethers.BigNumber.from(curBalance) / constant.decimals
+              }, ${config.tokenName} : ${
+                ethers.BigNumber.from(curTokenBalance) / constant.decimals
+              }`
+            )
+          );
         } else if (mode == "2") {
           // Buy & Sell
 
@@ -933,7 +932,7 @@ const getPrice = async () => {
 const run = async () => {
   startTime = new Date();
 
-  if (config.isCreate && config.run_again) {
+  if (config.isCreate) {
     //Create the Empty accounts...
 
     let wallets = [];
@@ -958,7 +957,7 @@ const run = async () => {
     console.log("Number of wallets inserted: " + result.affectedRows);
   }
 
-  if (config.isSend && config.run_again) {
+  if (config.isSend) {
     //Send funds from A,B,C to temp wallets...
 
     let sql =
@@ -1033,7 +1032,7 @@ const run = async () => {
 
     // in order to calculate the time for running.
 
-    let sql = "SELECT * FROM accounts where 1=1";
+    let sql = "SELECT * FROM accounts where 1=1 ORDER BY ID DESC";
     let loadPromise = () => {
       return new Promise((resolve, reject) => {
         con.query(sql, async function (err, result) {
@@ -1069,7 +1068,7 @@ const run = async () => {
       accountsTrade = possibleAccounts;
     }
 
-    if (config.isPreparation && config.run_again) {
+    if (config.isPreparation) {
       /*
        *** Preparation ***
        *** Buy the token till volume reaches to the preparation amounts.
@@ -1100,57 +1099,60 @@ const run = async () => {
     price_cur = await getPrice();
     price_before = price_cur;
 
-    if (config.is_change_price_floor) {
-      // According to the Price change, Buy & Sell.
+    let isInfinite = true;
+    while (isInfinite) {
+      if (config.is_change_price_floor) {
+        // According to the Price change, Buy & Sell.
 
-      while (true) {
-        price_cur = await getPrice();
-        let priceHigh = price_before * (1 + config.buy_param / 100);
-        let priceLow = price_before * (1 - config.buy_param / 100);
-        if (price_cur > priceHigh) {
-          await do_market_making(
-            3,
-            possibleAccounts,
-            0,
-            config.time_sellout,
-            false
-          );
-          price_before = await getPrice();
-        } else if (price_cur < priceLow) {
-          await do_market_making(
-            4,
-            possibleAccounts,
-            0,
-            config.time_sellout,
-            false
-          );
-          price_before = await getPrice();
+        while (true) {
+          price_cur = await getPrice();
+          let priceHigh = price_before * (1 + config.buy_param / 100);
+          let priceLow = price_before * (1 - config.buy_param / 100);
+          if (price_cur > priceHigh) {
+            await do_market_making(
+              3,
+              possibleAccounts,
+              0,
+              config.change_time_goal,
+              false
+            );
+            price_before = await getPrice();
+          } else if (price_cur < priceLow) {
+            await do_market_making(
+              4,
+              possibleAccounts,
+              0,
+              config.change_time_goal,
+              false
+            );
+            price_before = await getPrice();
+          }
+          await sleep(5000);
         }
-        await sleep(5000);
-      }
-    } else {
-      // Random buy & Sell till Volume
+      } else {
+        // Random buy & Sell till Volume
 
+        console.log(
+          chalk.yellow(
+            `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is being started`
+          )
+        );
+
+        await do_market_making(
+          2,
+          accountsTrade,
+          config.Volume_goal,
+          config.time_goal,
+          false
+        );
+      }
       console.log(
         chalk.yellow(
-          `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is being started`
+          `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is completed`
         )
       );
-
-      await do_market_making(
-        2,
-        accountsTrade,
-        config.Volume_goal,
-        config.time_goal,
-        false
-      );
+      if (config.run_again) isInfinite = false;
     }
-
-    console.log(
-      chalk.yellow(
-        `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is completed`
-      )
-    );
   }
 
   if (config.isTreasury) {
