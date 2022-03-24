@@ -2,18 +2,18 @@
     "wallets": [
         {
           "private_key":
-            "0xbb4e79af52343f406d687391a11be2406fb2581bca1f38b52dd94c0a373fbf6f",
-          "public_key": "0xf5A50f5434945822C34Afa61A0781EcCe2270E57"
+            "45e6070ae4e973f522d4d67aa4d57b3e240709230cf7f6733585724849517e32",
+          "public_key": "0x1c498a3d1Abec0EB1e66e65e0C23800Dba154317"
         },
         {
           "private_key":
-            "0xbb4e79af52343f406d687391a11be2406fb2581bca1f38b52dd94c0a373fbf6e",
-          "public_key": "0x84837bd66a9E7f58cA02FcCE09500F9e087D45D5"
+            "2fafee60145c701732ffca4fe8b3f71fd890cb6043217a4b831075d2bc2e36e2",
+          "public_key": "0x6e012e2A9f1fe837e9D8b89836E13F41ea9FE04C"
         },
         {
           "private_key":
-            "0xbb4e79af52343f406d687391a11be2406fb2581bca1f38b52dd94c0a373fbf6d",
-          "public_key": "0x13b1F38622e783E6750E8fD0dCc3E16e6aaF53E3"
+            "d735f056f0c42c8dfa4feb0719d09757c1e8cba82aa8872ac90bc17e660fcb89",
+          "public_key": "0x45C6aE767c4B3d3DbFA46522Fe5a224AcFA38453"
         }
       ]
 }

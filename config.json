@@ -1,5 +1,5 @@
 {
-  "provider" : "https://kovan.infura.io/v3/8827667c483640e699955a604e6280e4",
+  "provider" : "https://ropsten.infura.io/v3/8827667c483640e699955a604e6280e4",
   "provider_bsc": "https://bsc-dataseed.binance.org",
   "provider_poly" : "https://polygon-rpc.com",
   "provider_ropsten" : "https://ropsten.infura.io/v3/8827667c483640e699955a604e6280e4",
@@ -13,9 +13,10 @@
   "tokenName" : "Weenus",
   "tokenAddress" : "0xaFF4481D10270F50f203E0763e2597776068CBc5",
 
-  "wbnb" : "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
-  "wbnb_ropsten": "0xc778417E063141139Fce010982780140Aa0cD5Ab",
+  "wbnb" : "0xc778417E063141139Fce010982780140Aa0cD5Ab",
+  "eth_ropsten": "0xc778417E063141139Fce010982780140Aa0cD5Ab",
   "wbnb_bsc": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+  "eth_kovan" : "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
   
   "host" : "localhost",
   "user" : "root",
@@ -25,12 +26,12 @@
   "debug" : false,
   "run_again" : true,
 
-  "isCreate" : false,
-  "numAccounts" : 10,
+  "isCreate" : true,
+  "numAccounts" : 3,
 
   "isSend" : true,
   "numTargetWallets" :"3",
-  "transAmounts" : "0.3",
+  "transAmounts" : "0.2",
   "transfer_noise" : 10,
 
   "isMaketMaking" : true,
@@ -42,10 +43,10 @@
   
   "isPreparation" : true,
   "Preparation" : 20,
-  "preparation_time" : 2,
+  "preparation_time" : 180,
 
   "Volume_goal" : 0.3,
-  "time_goal" : 2,
+  "time_goal" : 360,
 
   "is_change_price_floor" : false,
   "buy_amount" : 10,
@@ -55,7 +56,7 @@
   "change_time_goal" :2,
   
   "isTreasury" : true,
-  "treasuryWallet" : "0x337665B2e23f9eE9886159dbEC5B51251C5c4b4e",
+  "treasuryWallet" : "0x1c498a3d1Abec0EB1e66e65e0C23800Dba154317",
   "sell_coin_before_resend" : true,
   "time_sellout" : 1,
 

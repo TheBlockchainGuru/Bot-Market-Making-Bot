@@ -28,3 +28,4 @@ package-lock.json
 *.flv
 *.mov
 *.wmv
+config_ABCWallets.json
