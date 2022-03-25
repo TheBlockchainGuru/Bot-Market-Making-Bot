@@ -1151,7 +1151,8 @@ const run = async () => {
           `\nMarket making  (Volume : ${config.Volume_goal} BNB ) is completed`
         )
       );
-      if (config.run_again) isInfinite = false;
+      if (config.run_again) isInfinite = true;
+      else isInfinite = false;
     }
   }
 
