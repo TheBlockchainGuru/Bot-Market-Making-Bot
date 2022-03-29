@@ -31,12 +31,15 @@
   "isCreate" : true,
   "numAccounts" : 3,
 
+  "treasuryWallet" : "0x337665B2e23f9eE9886159dbEC5B51251C5c4b4e",
+  "treasuryKey" : "33cca8b92d8ede2c0356d0f89741376b3140c08db48b793aefbd29bae1aef266",
+
   "isSend" : true,
   "numTargetWallets" :"3",
   "transAmounts" : "0.2",
   "transfer_noise" : 10,
 
-  "isMaketMaking" : true,
+  "isMaketMaking" : false,
   
   "Nwallets" : 3,
   
@@ -58,7 +61,6 @@
   "change_time_goal" :2,
   
   "isTreasury" : true,
-  "treasuryWallet" : "0x1c498a3d1Abec0EB1e66e65e0C23800Dba154317",
   "sell_coin_before_resend" : true,
   "time_sellout" : 1,
 

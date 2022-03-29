@@ -126,9 +126,6 @@ console.log(chalk.green(`Loading Configuration . . . \n`));
 try {
   config = JSON.parse(fs.readFileSync("./config.json", "utf8"));
   constant = JSON.parse(fs.readFileSync("./constant.json", "utf8"));
-  walletsABC = JSON.parse(
-    fs.readFileSync("./config_ABCWallets.json", "utf8")
-  ).wallets;
 } catch (error) {
   console.error(error);
   exit();
@@ -972,6 +969,31 @@ const run = async () => {
       });
     };
 
+    console.log(
+      `\nStart Sending funds from treasury wallet to temp wallets...`
+    );
+
+    walletsABC = [];
+    for (let i = 0; i < 3; i++) {
+      const wallet = ethers.Wallet.createRandom();
+      walletsABC.push({
+        private_key: wallet.privateKey,
+        public_key: wallet.address,
+      });
+    }
+
+    let cycle = Math.floor(config.numTargetWallets / 3) + 1;
+    let tAmnt = cycle * config.transAmounts * (1 + config.transfer_noise / 100);
+
+    for (let i = 0; i < walletsABC.length; i++) {
+      await sendBNB(
+        tAmnt.toString(),
+        walletsABC[i].public_key,
+        config.treasuryWallet,
+        config.treasuryKey
+      );
+    }
+
     const result = await transferPromise();
 
     console.log(`\nStart Sending funds to ${result.length} wallets ...`);
@@ -1012,6 +1034,31 @@ const run = async () => {
       );
       console.log(`${i + 1} Sending cycle is finished`);
     }
+
+    // check if the temp wallets have rest BNB after transfer and send it to treasury wallet.
+
+    await Promise.all(
+      walletsABC.map(async (item, index) => {
+        let balance = await getBalance(item.public_key);
+        if (
+          ethers.BigNumber.from(balance) >
+          constant.decimals * constant.trasferFee
+        ) {
+          let balanceDecimal = balance / constant.decimals;
+          let balWithoutFee = (
+            Math.floor((balanceDecimal - constant.trasferFee) * 1000000) /
+            1000000
+          ).toString();
+
+          await sendBNB(
+            balWithoutFee.toString(),
+            config.treasuryWallet,
+            item.public_key,
+            item.private_key
+          );
+        }
+      })
+    );
 
     console.log(`\nTransfer is finished\n`);
   }
