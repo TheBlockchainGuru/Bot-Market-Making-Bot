@@ -25,7 +25,7 @@
   "password" : "",
   "database" : "marketmaking",
 
-  "debug" : false,
+  "debug" : true,
   "run_again" : true,
 
   "isCreate" : true,
@@ -39,7 +39,7 @@
   "transAmounts" : "0.2",
   "transfer_noise" : 10,
 
-  "isMaketMaking" : false,
+  "isMaketMaking" : true,
   
   "Nwallets" : 3,
   
